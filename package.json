@@ -1,0 +1,1 @@
+{"name":"mizani-iphone","version":"0.1.0","private":true,"scripts":{"test":"node --test Tests/core.test.cjs","check":"node --check Mizani/Resources/core.js"}}

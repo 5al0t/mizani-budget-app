@@ -1,0 +1,32 @@
+name: iOS checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Domain tests and project consistency
+        run: |
+          node --test Tests/core.test.cjs
+          node scripts/generate-project.cjs --check
+          plutil -lint Mizani/Info.plist Mizani/Resources/PrivacyInfo.xcprivacy Mizani.xcodeproj/project.pbxproj
+      - name: Choose an available iPhone simulator
+        run: |
+          SIMULATOR_ID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for items in d["devices"].values() for x in items if x["name"].startswith("iPhone")))')
+          echo "SIMULATOR_ID=$SIMULATOR_ID" >> "$GITHUB_ENV"
+      - name: Build and test the native app
+        run: |
+          xcodebuild test -project Mizani.xcodeproj -scheme Mizani -configuration Debug -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -derivedDataPath build/DerivedData -resultBundlePath build/Mizani.xcresult CODE_SIGNING_ALLOWED=NO
+      - name: Save test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iOS-test-results
+          path: build/Mizani.xcresult
+          if-no-files-found: ignore
